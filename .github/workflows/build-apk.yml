@@ -1,0 +1,35 @@
+name: Construir APK Biblia
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+permissions:
+  contents: read
+  actions: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Descargar Biblia completa para lectura sin conexión
+        run: |
+          mkdir -p app/src/main/assets/bible
+          curl -fL --retry 3 https://ebible.org/Scriptures/spaRV1909_html.zip -o /tmp/rv1909.zip
+          unzip -oq /tmp/rv1909.zip -d app/src/main/assets/bible
+          python3 scripts/make_reader.py app/src/main/assets/bible
+      - name: Compilar APK
+        run: gradle --no-daemon assembleDebug
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Biblia-Palabra-de-Dios-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
